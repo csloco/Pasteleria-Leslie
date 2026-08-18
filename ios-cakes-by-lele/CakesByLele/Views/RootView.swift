@@ -2,12 +2,11 @@ import SwiftUI
 
 struct RootView: View {
     @State private var store = AppStore()
-    @State private var selection: Int = 0
-    @State private var calculatorSpec: CakeSpec?
 
     var body: some View {
-        TabView(selection: $selection) {
-            DashboardView(selection: $selection)
+        @Bindable var store = store
+        TabView(selection: $store.selectedTab) {
+            DashboardView(selection: $store.selectedTab)
                 .tabItem { Label("Inicio", systemImage: "house.fill") }
                 .tag(0)
 

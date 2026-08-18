@@ -35,6 +35,10 @@ final class AppStore {
         didSet { scheduleSave() }
     }
 
+    /// Transient navigation state (not persisted).
+    var selectedTab: Int = 0
+    var focusedProductionOrderID: UUID?
+
     private var saveTask: Task<Void, Never>?
 
     private static var fileURL: URL {
@@ -184,6 +188,55 @@ final class AppStore {
                                        phone: order.phone,
                                        favoriteFlavor: order.flavor))
         }
+    }
+
+    // MARK: - Order references (photos and PDFs)
+
+    func addAttachments(_ attachments: [OrderAttachment], to orderID: UUID) {
+        guard let index = data.orders.firstIndex(where: { $0.id == orderID }), !attachments.isEmpty else { return }
+        var current = data.orders[index].attachments
+        current.append(contentsOf: attachments)
+        data.orders[index].attachments = current
+        if data.orders[index].pinnedAttachmentID == nil,
+           let firstPhoto = attachments.first(where: \.isPhoto) {
+            data.orders[index].pinnedAttachmentID = firstPhoto.id
+        }
+        if data.orders[index].referenceImageURL.isEmpty,
+           let firstPhoto = attachments.first(where: \.isPhoto) {
+            data.orders[index].referenceImageURL = firstPhoto.fileName
+        }
+    }
+
+    func deleteAttachment(id: UUID, from orderID: UUID) {
+        guard let index = data.orders.firstIndex(where: { $0.id == orderID }),
+              let attachment = data.orders[index].attachments.first(where: { $0.id == id }) else { return }
+        AttachmentStore.delete(fileName: attachment.fileName)
+        ThumbnailCache.shared.invalidate(fileName: attachment.fileName)
+        data.orders[index].attachments.removeAll { $0.id == id }
+        if data.orders[index].pinnedAttachmentID == id {
+            data.orders[index].pinnedAttachmentID = data.orders[index].photoAttachments.first?.id
+        }
+        if data.orders[index].referenceImageURL == attachment.fileName {
+            data.orders[index].referenceImageURL = data.orders[index].photoAttachments.first?.fileName ?? ""
+        }
+    }
+
+    func pinAttachment(id: UUID, in orderID: UUID) {
+        guard let index = data.orders.firstIndex(where: { $0.id == orderID }) else { return }
+        data.orders[index].pinnedAttachmentID = data.orders[index].pinnedAttachmentID == id ? nil : id
+    }
+
+    func updateAttachmentNote(id: UUID, in orderID: UUID, note: String) {
+        guard let orderIndex = data.orders.firstIndex(where: { $0.id == orderID }),
+              let attachmentIndex = data.orders[orderIndex].attachments.firstIndex(where: { $0.id == id }) else { return }
+        var list = data.orders[orderIndex].attachments
+        list[attachmentIndex].note = note
+        data.orders[orderIndex].attachments = list
+    }
+
+    func openProductionTicket(for orderID: UUID) {
+        focusedProductionOrderID = orderID
+        selectedTab = 3
     }
 
     func upsert(item: InventoryItem) {

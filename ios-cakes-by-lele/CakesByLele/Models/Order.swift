@@ -115,6 +115,10 @@ nonisolated struct Order: Identifiable, Codable, Hashable, Sendable {
     var referenceImageURL: String = ""
     var dedication: String = ""
 
+    /// Stored optional so older saved files keep decoding after the update.
+    var referenceFiles: [OrderAttachment]?
+    var pinnedAttachmentID: UUID?
+
     var price: Double = 0
     var deposit: Double = 0
     var paymentMethod: PaymentMethod = .transferencia
@@ -126,6 +130,23 @@ nonisolated struct Order: Identifiable, Codable, Hashable, Sendable {
     var materials: [ProductionMaterial] = []
     var checklist: [ChecklistStep] = []
     var inventoryDeducted: Bool = false
+
+    /// Photos and documents attached to the order, newest last.
+    var attachments: [OrderAttachment] {
+        get { referenceFiles ?? [] }
+        set { referenceFiles = newValue }
+    }
+
+    var photoAttachments: [OrderAttachment] { attachments.filter(\.isPhoto) }
+    var documentAttachments: [OrderAttachment] { attachments.filter { !$0.isPhoto } }
+
+    /// The reference the chef wants to keep visible while decorating.
+    var pinnedAttachment: OrderAttachment? {
+        if let pinnedAttachmentID, let match = attachments.first(where: { $0.id == pinnedAttachmentID }) {
+            return match
+        }
+        return photoAttachments.first
+    }
 
     var balance: Double { max(price + shippingCost - deposit, 0) }
     var isPaid: Bool { balance <= 0.001 && price > 0 }

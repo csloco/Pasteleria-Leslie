@@ -7,10 +7,22 @@ struct ProductionView: View {
     @State private var editingMaterial: ProductionMaterial?
     @State private var isAddingMaterial = false
     @State private var showDeductConfirmation = false
+    @State private var viewerAttachmentID: UUID?
 
-    private var orders: [Order] { store.todayProductionOrders }
+    private var orders: [Order] {
+        var list = store.todayProductionOrders
+        if let focus = store.focusedProductionOrderID,
+           let order = store.data.orders.first(where: { $0.id == focus }),
+           !list.contains(where: { $0.id == focus }) {
+            list.insert(order, at: 0)
+        }
+        return list
+    }
 
     private var activeOrder: Order? {
+        if let focus = store.focusedProductionOrderID, let order = orders.first(where: { $0.id == focus }) {
+            return order
+        }
         if let selectedOrderID, let order = orders.first(where: { $0.id == selectedOrderID }) {
             return order
         }
@@ -30,6 +42,9 @@ struct ProductionView: View {
                         progressCard
                         orderSelector
                         if let order = activeOrder {
+                            if let pinned = order.pinnedAttachment {
+                                pinnedReferenceCard(order, attachment: pinned)
+                            }
                             summaryCard(order)
                             MaterialsCard(order: order,
                                           onEdit: { editingMaterial = $0 },
@@ -49,6 +64,11 @@ struct ProductionView: View {
             .scrollIndicators(.hidden)
             .canvasBackground()
             .toolbar(.hidden, for: .navigationBar)
+        }
+        .fullScreenCover(item: $viewerAttachmentID) { id in
+            if let order = activeOrder {
+                AttachmentViewerView(orderID: order.id, startID: id)
+            }
         }
         .sheet(item: $editingMaterial) { material in
             if let order = activeOrder {
@@ -110,12 +130,48 @@ struct ProductionView: View {
                 ForEach(orders) { order in
                     ChoiceChip(title: "\(order.clientName) · \(order.displayTitle)",
                                isSelected: order.id == activeOrder?.id) {
+                        store.focusedProductionOrderID = nil
                         selectedOrderID = order.id
                     }
                 }
             }
         }
         .scrollIndicators(.hidden)
+    }
+
+    /// Reference the chef pinned so it stays visible while decorating.
+    private func pinnedReferenceCard(_ order: Order, attachment: OrderAttachment) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Button {
+                viewerAttachmentID = attachment.id
+            } label: {
+                AttachmentThumbnail(attachment: attachment, maxPixel: 400, cornerRadius: 14)
+                    .frame(width: 92, height: 92)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 14).strokeBorder(Theme.hairline, lineWidth: 1)
+                    }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Ver referencia fijada")
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("\(order.clientName) · \(order.spec.tierCount) \(order.spec.tierCount == 1 ? "piso" : "pisos")")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.ink)
+                Text(attachment.note.isEmpty ? "Referencia fijada" : attachment.note)
+                    .font(.caption)
+                    .foregroundStyle(Theme.secondaryInk)
+                    .lineLimit(2)
+                Text("\(Fmt.percent(order.checklistProgress)) completado")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.accentDeep)
+                    .monospacedDigit()
+                ProgressView(value: order.checklistProgress)
+                    .tint(Theme.accentDeep)
+            }
+            Spacer(minLength: 0)
+        }
+        .cardSurface()
     }
 
     private func summaryCard(_ order: Order) -> some View {

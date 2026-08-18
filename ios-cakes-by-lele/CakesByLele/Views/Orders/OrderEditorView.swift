@@ -56,8 +56,13 @@ struct OrderEditorView: View {
                     TextField("Diseño solicitado", text: $draft.design, axis: .vertical)
                         .lineLimit(1...4)
                     TextField("Dedicatoria", text: $draft.dedication)
-                    TextField("Foto de referencia (enlace)", text: $draft.referenceImageURL)
-                        .textInputAutocapitalization(.never)
+                    LabeledContent("Referencias adjuntas",
+                                   value: draft.attachments.isEmpty
+                                       ? "Ninguna"
+                                       : "\(draft.photoAttachments.count) fotos · \(draft.documentAttachments.count) PDF")
+                    Text("Adjunta fotos y cotizaciones desde el detalle del pedido.")
+                        .font(.caption)
+                        .foregroundStyle(Theme.secondaryInk)
                 }
 
                 Section("Pago") {

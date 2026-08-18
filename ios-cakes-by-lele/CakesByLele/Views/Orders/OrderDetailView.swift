@@ -5,6 +5,8 @@ struct OrderDetailView: View {
     let orderID: UUID
 
     @State private var isEditing = false
+    @State private var isAddingReference = false
+    @State private var viewerAttachmentID: UUID?
 
     private var order: Order? {
         store.data.orders.first { $0.id == orderID }
@@ -14,18 +16,28 @@ struct OrderDetailView: View {
         ScrollView {
             if let order {
                 VStack(spacing: 16) {
-                    headerCard(order)
-                    statusCard(order)
-                    cakeCard(order)
-                    paymentCard(order)
-                    if !order.design.isEmpty || !order.dedication.isEmpty || !order.notes.isEmpty {
-                        notesCard(order)
+                    if !order.photoAttachments.isEmpty {
+                        ReferenceHeroGallery(photos: order.photoAttachments) { attachment in
+                            viewerAttachmentID = attachment.id
+                        }
                     }
-                    productionCard(order)
+                    VStack(spacing: 16) {
+                        headerCard(order)
+                        OrderReferencesCard(order: order,
+                                            onAdd: { isAddingReference = true },
+                                            onOpen: { viewerAttachmentID = $0.id })
+                        statusCard(order)
+                        cakeCard(order)
+                        paymentCard(order)
+                        if !order.design.isEmpty || !order.dedication.isEmpty || !order.notes.isEmpty {
+                            notesCard(order)
+                        }
+                        productionCard(order)
+                    }
+                    .padding(.horizontal, 16)
                     Color.clear.frame(height: 12)
                 }
-                .padding(.horizontal, 16)
-                .padding(.top, 8)
+                .padding(.top, order.photoAttachments.isEmpty ? 8 : 0)
                 .padding(.bottom, 24)
             } else {
                 EmptyStateView(symbol: "tray",
@@ -44,10 +56,34 @@ struct OrderDetailView: View {
                 Button("Editar") { isEditing = true }
             }
         }
+        .safeAreaInset(edge: .bottom) {
+            if let order, order.status.isProduction || !order.materials.isEmpty {
+                Button {
+                    store.openProductionTicket(for: order.id)
+                } label: {
+                    Label("Abrir ficha de producción", systemImage: "list.clipboard")
+                }
+                .buttonStyle(PrimaryButtonStyle())
+                .padding(.horizontal, 16)
+                .padding(.bottom, 8)
+                .background(
+                    LinearGradient(colors: [Theme.canvas.opacity(0), Theme.canvas],
+                                   startPoint: .top,
+                                   endPoint: .bottom)
+                        .ignoresSafeArea()
+                )
+            }
+        }
         .sheet(isPresented: $isEditing) {
             if let order {
                 OrderEditorView(order: order, isNew: false)
             }
+        }
+        .sheet(isPresented: $isAddingReference) {
+            AddAttachmentSheet(orderID: orderID, clientName: order?.clientName ?? "")
+        }
+        .fullScreenCover(item: $viewerAttachmentID) { id in
+            AttachmentViewerView(orderID: orderID, startID: id)
         }
     }
 

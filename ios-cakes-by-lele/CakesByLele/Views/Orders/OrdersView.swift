@@ -231,6 +231,12 @@ struct OrderRow: View {
                           systemImage: "shippingbox")
                         .font(.caption)
                         .foregroundStyle(Theme.secondaryInk)
+                    if !order.attachments.isEmpty {
+                        Label("\(order.attachments.count)", systemImage: "paperclip")
+                            .font(.caption)
+                            .foregroundStyle(Theme.accentDeep)
+                            .accessibilityLabel("\(order.attachments.count) referencias adjuntas")
+                    }
                 }
             }
             Image(systemName: "chevron.right")
