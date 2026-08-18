@@ -1,0 +1,13 @@
+{
+  "$schema": "https://rork.com/schema/rork.json",
+  "apps": [
+    {
+      "name": "Cakes by Lele",
+      "path": "ios-cakes-by-lele",
+      "framework": "swift",
+      "settings": {
+        "displayName": "Cakes by lele"
+      }
+    }
+  ]
+}
