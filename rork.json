@@ -2,7 +2,7 @@
   "$schema": "https://rork.com/schema/rork.json",
   "apps": [
     {
-      "name": "Cakes by Lele",
+      "name": "Cakes_by_Lele",
       "path": "ios-cakes-by-lele",
       "framework": "swift",
       "settings": {
